@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: WandTech Scope Loader
- * Plugin URI:  https://wandtech.com/
+ * Plugin URI:  https://wandtech.ir/
  * Description: Advanced Must-Use Plugin for conditional and highly optimized loading of standard plugins based on execution scope.
  * Version:     2.0.0
  * Author:      WandTech
- * Author URI:  https://wandtech.com/
+ * Author URI:  https://wandtech.ir/
  * License:     GPL-2.0+
  * 
  * @package WandTech\ScopeLoader
