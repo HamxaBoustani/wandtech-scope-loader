@@ -149,7 +149,7 @@ class Header_Parser {
 			);
 		}
 
-		// 🎯 Fail-Closed Logic: 
+		// Fail-Closed Logic: 
 		// If the developer defined scopes, but none of them were valid, we MUST NOT load the plugin.
 		// Example: They wrote "Scope: frnt" (typo). We block it entirely.
 		if ( empty( $valid_scopes ) ) {

@@ -11,7 +11,7 @@ declare( strict_types=1 );
 
 namespace WandTech\ScopeLoader;
 
-// 1. Security First: Prevent direct access to the file.
+// Security First: Prevent direct access to the file.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }

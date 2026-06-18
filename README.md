@@ -73,21 +73,22 @@ You can use any combination of the following values in the `Scope` header:
 
 ---
 
-## 🛡 Technical Details & Stability (v2.0.0 Enhancements)
+## 🛡 Technical Details & Stability (v2.0.0 – v2.0.2)
 
-Version 2.0.0 introduces a massive architectural overhaul for enterprise stability:
+The architecture is built for enterprise stability and extreme scalability:
 
 1.  **Object-Oriented Refactoring:** Codebase split into `Scope_Loader`, `Environment_Detector`, and `Header_Parser` for clean separation of concerns and testability.
 2.  **Fail-Safe Bootstrapper:** Utilizes a custom autoloader wrapped in a `try-catch` block hooked to `muplugins_loaded` at priority `0`. Prevents critical errors if files are missing or modified incorrectly.
 3.  **$O(1)$ Uniqueness for Debug Notices:** Fixed a core WordPress quirk where `option_active_plugins` is called multiple times. The system now uses an associative array with plugin paths as unique keys, ensuring $O(1)$ complexity and 100% accurate blocked-plugin counts in admin notices.
 4.  **Full Multisite Support:** Seamlessly filters network-active plugins via the `site_option_active_sitewide_plugins` hook.
 5.  **WPCS Compliance:** Fully adheres to WordPress Coding Standards, including strict Yoda conditions and proper PHPDoc type hinting.
+6.  **Robust Dependency Resolution (v2.0.1–v2.0.2):** `Scope-Requires` now verifies actual plugin activation state (site-level and network-level independently) before allowing a dependent plugin to load, instead of trusting header data alone.
 
 ---
 
 ## ⚠️ Known Limitations (Multisite Environments)
 
-When operating in a WordPress Multisite network, please be aware of the following architectural behavior regarding dependencies:
+When operating in a WordPress Multisite network, please be aware of the following architectural behaviors and dependency requirements:
 
 *   **Supported Dependency Flows:** 
     *   `Site-Specific Plugin` ➡️ depends on ➡️ `Site-Specific Plugin` (Supported)
@@ -97,7 +98,11 @@ When operating in a WordPress Multisite network, please be aware of the followin
 *   **Unsupported Dependency Flow (Anti-Pattern):**
     *   ❌ `Network-Active Plugin` ➡️ depends on ➡️ `Site-Specific Plugin` (Not Supported)
     
-    *Why?* WordPress loads Network-wide active plugins (`site_option_active_sitewide_plugins`) before site-specific active plugins (`option_active_plugins`). In this phase, the site-specific plugin has not yet been registered or populated in memory. Relying on this sequence is considered a Multisite architectural design flaw, as a globally active network plugin should never depend on a locally activated site plugin.
+    *Why?* WordPress loads network-wide active plugins (`site_option_active_sitewide_plugins`) before site-specific active plugins (`option_active_plugins`); at that point, the site-specific plugin list does not exist in memory yet. More importantly, designing a network-active plugin to depend on a site-specific plugin is itself an architectural anti-pattern—a globally active plugin should never assume a locally activated plugin exists on every site in the network.
+
+*   **Manual Code Edits & Caching:** 
+    *   The scope-header cache is automatically cleared on plugin activation, deactivation, core update, or when using the built-in WordPress **Plugin File Editor**. 
+    *   However, **manually editing a plugin's `Scope` or `Scope-Requires` header via FTP/SFTP** does not trigger invalidation hooks. In such cases, you must clear the cache manually by running the WP-CLI command: `wp option delete wandtech_scope_loader_cache` or simply toggling the edited plugin off and on in the WordPress dashboard to force a refresh.
 
 ---
 
@@ -106,6 +111,7 @@ When operating in a WordPress Multisite network, please be aware of the followin
 ### [2.0.2] - 2026-06-18
 #### Fixed
 - **Multisite Dependency Overwrite Bug:** Resolved an issue where local site-active plugins checking dependencies on network-active plugins (like WooCommerce) failed. Split the active plugin mapping into two isolated $O(1)$ properties (`$network_active_plugins` and `$site_active_plugins`) to prevent subsequent site-specific checks from wiping the previously resolved network plugin state.
+- **WP Admin File Editor Cache Invalidation:** Hooked into the AJAX action `wp_ajax_edit-theme-plugin-file` at priority `0` to automatically clear the scope cache whenever a developer saves changes via the built-in WordPress editor.
 
 ### [2.0.1] - 2026-06-18
 #### Fixed

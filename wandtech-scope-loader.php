@@ -3,7 +3,7 @@
  * Plugin Name: WandTech Scope Loader
  * Plugin URI:  https://wandtech.ir/
  * Description: Advanced Must-Use Plugin for conditional and highly optimized loading of standard plugins based on execution scope.
- * Version:     2.0.0
+ * Version:     2.0.2
  * Author:      WandTech
  * Author URI:  https://wandtech.ir/
  * License:     GPL-2.0+
@@ -14,17 +14,17 @@
 // Enable strict typing for robust PHP execution
 declare( strict_types=1 );
 
-// 1. Security First: Prevent direct access to the file
+// Security First: Prevent direct access to the file
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// 2. Core Constants Definition
-define( 'WANDTECH_SCOPE_LOADER_VERSION', '2.0.0' );
+// Core Constants Definition
+define( 'WANDTECH_SCOPE_LOADER_VERSION', '2.0.2' );
 define( 'WANDTECH_SCOPE_LOADER_DIR', __DIR__ . '/inc' );
 
 /**
- * 3. Custom SPL Autoloader
+ * Custom SPL Autoloader
  * 
  * Instead of multiple hardcoded `require_once` statements which can cause fatal errors
  * if a file is missing, we use an autoloader. This is PSR-4 inspired but adapted 
@@ -53,7 +53,7 @@ spl_autoload_register( static function ( string $class ): void {
 } );
 
 /**
- * 4. Bootstrapping the Application
+ * Bootstrapping the Application
  * 
  * This function handles the Dependency Injection and initialization.
  * We wrap it in a try-catch block to ensure that if ANY logic fails,
@@ -90,7 +90,7 @@ function wandtech_boot_scope_loader(): void {
 }
 
 /**
- * 5. Execution Hook
+ * Execution Hook
  * 
  * We hook into 'muplugins_loaded' at priority $0$.
  * This guarantees our code runs AFTER all MU-Plugins are loaded, 

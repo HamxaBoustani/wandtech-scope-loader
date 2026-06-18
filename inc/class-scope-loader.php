@@ -5,7 +5,7 @@
  * The main orchestrator for dynamically loading WordPress plugins based on environment scopes.
  * 
  * @package WandTech\ScopeLoader
- * @version 2.0.1
+ * @version 2.0.2
  */
 
 declare(strict_types=1);
@@ -34,7 +34,7 @@ class Scope_Loader {
 	/**
 	 * Cache versioning to ensure automatic invalidation upon core MU-Plugin updates.
 	 */
-	private const CACHE_VERSION = '2.0.1';
+	private const CACHE_VERSION = '2.0.2';
 
 	/**
 	 * The current detected WordPress environment scope (e.g., 'admin', 'front', 'ajax').
@@ -55,12 +55,16 @@ class Scope_Loader {
 	private array $plugin_cache = [];
 
 	/**
-	 * Map of originally active plugins to resolve dependencies with O(1) complexity.
-	 * Helps verify if required plugins are actually installed and active.
-	 * 
+	 * Map of network-active plugins for O(1) lookup in dependency resolution.
 	 * @var array<string, mixed>
 	 */
-	private array $active_plugin_set = [];
+	private array $network_active_plugins = [];
+
+	/**
+	 * Map of site-active plugins for O(1) lookup in dependency resolution.
+	 * @var array<string, bool>
+	 */
+	private array $site_active_plugins = [];
 
 	/**
 	 * Flag to track if new data was parsed during the request, requiring a database write.
@@ -113,6 +117,9 @@ class Scope_Loader {
 		add_action( 'activated_plugin', [ $this, 'clear_cache' ] );
 		add_action( 'deactivated_plugin', [ $this, 'clear_cache' ] );
 		add_action( 'upgrader_process_complete', [ $this, 'clear_cache' ], 10, 0 );
+		
+		// Clear cache when editing plugin files via WP File Editor
+		add_action( 'wp_ajax_edit-theme-plugin-file', [ $this, 'clear_cache' ], 0 );
 
 		// 4. Debug Notices (Visible only in Admin to Administrators)
 		add_action( 'admin_notices', [ $this, 'render_debug_notice' ] );
@@ -130,8 +137,8 @@ class Scope_Loader {
 			return $plugins;
 		}
 
-		// Map originally active plugins for O(1) lookup in dependency resolution.
-		$this->active_plugin_set = array_fill_keys( $plugins, true );
+		// Cleanly isolate site-active plugins to allow precise state tracking.
+		$this->site_active_plugins = array_fill_keys( $plugins, true );
 
 		if ( $this->should_bypass_filtering() ) {
 			return $plugins;
@@ -165,8 +172,8 @@ class Scope_Loader {
 			return $plugins;
 		}
 
-		// Map originally active sitewide plugins for O(1) lookup.
-		$this->active_plugin_set = $plugins;
+		// Cleanly isolate network-active plugins.
+		$this->network_active_plugins = $plugins;
 
 		if ( $this->should_bypass_filtering() ) {
 			return $plugins;
@@ -222,8 +229,10 @@ class Scope_Loader {
 
 		// --- Rule 3: Dependency Resolution (Scope-Requires) ---
 		foreach ( $requires as $dependency ) {
-			// A dependency MUST be installed and currently active in WordPress.
-			if ( ! isset( $this->active_plugin_set[ $dependency ] ) ) {
+			// A dependency MUST be active either network-wide or site-wide.
+			$is_active = isset( $this->network_active_plugins[ $dependency ] ) || isset( $this->site_active_plugins[ $dependency ] );
+
+			if ( ! $is_active ) {
 				error_log( sprintf( '[WandTech Scope Loader] WARNING: Dependency "%s" is not active or not installed. Blocking dependent plugin "%s".', $dependency, $plugin_file ) );
 				return false;
 			}
