@@ -5,7 +5,7 @@
  * Handles the extraction and validation of custom plugin headers for the Scope Loader.
  * 
  * @package WandTech\ScopeLoader
- * @version 2.0.0
+ * @version 2.0.2
  */
 
 declare(strict_types=1);

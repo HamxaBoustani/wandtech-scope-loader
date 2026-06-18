@@ -4,7 +4,7 @@
  *
  * @package   WandTech\ScopeLoader
  * @author    WandTech
- * @version   2.0.0
+ * @version   2.0.2
  */
 
 declare( strict_types=1 );
