@@ -1,6 +1,6 @@
 # WandTech Scope Loader
 
-**Version:** 2.0.0 | **PHP:** 8.0+ | **Type:** Must-Use Plugin (MU-Plugin)
+**Version:** 2.0.2 | **PHP:** 8.0+ | **Type:** Must-Use Plugin (MU-Plugin)
 
 **WandTech Scope Loader** is an enterprise-grade conditional plugin loader for WordPress. It is designed to dramatically improve site performance by selectively loading plugins based on their execution environment (Scope), preventing the compilation and execution of unnecessary PHP code on every request.
 
@@ -85,7 +85,31 @@ Version 2.0.0 introduces a massive architectural overhaul for enterprise stabili
 
 ---
 
+## ⚠️ Known Limitations (Multisite Environments)
+
+When operating in a WordPress Multisite network, please be aware of the following architectural behavior regarding dependencies:
+
+*   **Supported Dependency Flows:** 
+    *   `Site-Specific Plugin` ➡️ depends on ➡️ `Site-Specific Plugin` (Supported)
+    *   `Network-Active Plugin` ➡️ depends on ➡️ `Network-Active Plugin` (Supported)
+    *   `Site-Specific Plugin` ➡️ depends on ➡️ `Network-Active Plugin` (Supported - fully evaluated across scopes)
+
+*   **Unsupported Dependency Flow (Anti-Pattern):**
+    *   ❌ `Network-Active Plugin` ➡️ depends on ➡️ `Site-Specific Plugin` (Not Supported)
+    
+    *Why?* WordPress loads Network-wide active plugins (`site_option_active_sitewide_plugins`) before site-specific active plugins (`option_active_plugins`). In this phase, the site-specific plugin has not yet been registered or populated in memory. Relying on this sequence is considered a Multisite architectural design flaw, as a globally active network plugin should never depend on a locally activated site plugin.
+
+---
+
 ## 📜 Changelog
+
+### [2.0.2] - 2026-06-18
+#### Fixed
+- **Multisite Dependency Overwrite Bug:** Resolved an issue where local site-active plugins checking dependencies on network-active plugins (like WooCommerce) failed. Split the active plugin mapping into two isolated $O(1)$ properties (`$network_active_plugins` and `$site_active_plugins`) to prevent subsequent site-specific checks from wiping the previously resolved network plugin state.
+
+### [2.0.1] - 2026-06-18
+#### Fixed
+- **Critical Dependency Resolution Bug:** Resolved a logical flaw in `Scope-Requires` where dependencies that were either missing (not installed) or inactive were incorrectly bypassed and allowed to load, triggering potential Fatal Errors. Implemented strict $O(1)$ in-memory existence mapping prior to recursive scope evaluation.
 
 ### [2.0.0] - 2026-03-28
 #### Added

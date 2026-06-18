@@ -5,7 +5,7 @@
  * The main orchestrator for dynamically loading WordPress plugins based on environment scopes.
  * 
  * @package WandTech\ScopeLoader
- * @version 2.0.0
+ * @version 2.0.1
  */
 
 declare(strict_types=1);
@@ -34,7 +34,7 @@ class Scope_Loader {
 	/**
 	 * Cache versioning to ensure automatic invalidation upon core MU-Plugin updates.
 	 */
-	private const CACHE_VERSION = '2.0.0';
+	private const CACHE_VERSION = '2.0.1';
 
 	/**
 	 * The current detected WordPress environment scope (e.g., 'admin', 'front', 'ajax').
@@ -53,6 +53,14 @@ class Scope_Loader {
 	 * @var array<string, array>
 	 */
 	private array $plugin_cache = [];
+
+	/**
+	 * Map of originally active plugins to resolve dependencies with O(1) complexity.
+	 * Helps verify if required plugins are actually installed and active.
+	 * 
+	 * @var array<string, mixed>
+	 */
+	private array $active_plugin_set = [];
 
 	/**
 	 * Flag to track if new data was parsed during the request, requiring a database write.
@@ -118,7 +126,14 @@ class Scope_Loader {
 	 * @return mixed Filtered array, or original data if conditions aren't met.
 	 */
 	public function filter_active_plugins( $plugins ) {
-		if ( ! is_array( $plugins ) || $this->should_bypass_filtering() ) {
+		if ( ! is_array( $plugins ) ) {
+			return $plugins;
+		}
+
+		// Map originally active plugins for O(1) lookup in dependency resolution.
+		$this->active_plugin_set = array_fill_keys( $plugins, true );
+
+		if ( $this->should_bypass_filtering() ) {
 			return $plugins;
 		}
 
@@ -146,7 +161,14 @@ class Scope_Loader {
 	 * @return mixed Filtered array, or original data if conditions aren't met.
 	 */
 	public function filter_active_sitewide_plugins( $plugins ) {
-		if ( ! is_array( $plugins ) || $this->should_bypass_filtering() ) {
+		if ( ! is_array( $plugins ) ) {
+			return $plugins;
+		}
+
+		// Map originally active sitewide plugins for O(1) lookup.
+		$this->active_plugin_set = $plugins;
+
+		if ( $this->should_bypass_filtering() ) {
 			return $plugins;
 		}
 
@@ -200,8 +222,13 @@ class Scope_Loader {
 
 		// --- Rule 3: Dependency Resolution (Scope-Requires) ---
 		foreach ( $requires as $dependency ) {
-			// If a required plugin cannot be loaded (due to its own scope restrictions),
-			// then the current plugin MUST NOT load either.
+			// A dependency MUST be installed and currently active in WordPress.
+			if ( ! isset( $this->active_plugin_set[ $dependency ] ) ) {
+				error_log( sprintf( '[WandTech Scope Loader] WARNING: Dependency "%s" is not active or not installed. Blocking dependent plugin "%s".', $dependency, $plugin_file ) );
+				return false;
+			}
+
+			// If the active dependency itself is blocked in the current scope, block this plugin too.
 			if ( ! $this->should_load_plugin( $dependency, $processed ) ) {
 				return false;
 			}
